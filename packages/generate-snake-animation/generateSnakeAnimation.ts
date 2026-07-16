@@ -61,7 +61,7 @@ export const generateSnakeAnimation = async (
   );
 
   // create a target snake with the same length as the grown snake for
-  // the final exit pose
+  // the final exit pose (skip if pathfinding fails for long snakes)
   const lastSnake = chain.slice(-1)[0];
   const targetSnake = createSnakeFromCells(
     Array.from({ length: getSnakeLength(lastSnake) }, (_, i) => ({
@@ -69,7 +69,8 @@ export const generateSnakeAnimation = async (
       y: -1,
     })),
   );
-  chain.push(...getPathToPose(lastSnake, targetSnake)!);
+  const exitPath = getPathToPose(lastSnake, targetSnake);
+  if (exitPath) chain.push(...exitPath);
 
   return Promise.all(
     outputs.map(async (out, i) => {

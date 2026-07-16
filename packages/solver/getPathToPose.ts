@@ -40,9 +40,9 @@ export const getPathToPose = (snake0: Snake, target: Snake, grid?: Grid) => {
     },
   };
 
-  const [t0, ...forbidden] = targetCells;
+  const [t0, ...bodyCells] = targetCells;
 
-  forbidden.slice(0, 3);
+  let forbidden = bodyCells.slice(0, 3);
 
   const openList: M[] = [{ snake: snake0, w: 0 } as any];
   const closeList: Snake[] = [];
