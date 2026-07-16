@@ -17,13 +17,26 @@ export const createSnake = (
   { sizeCell, sizeDot }: Options,
   duration: number,
 ) => {
-  const snakeN = chain[0] ? getSnakeLength(chain[0]) : 0;
+  // use the maximum snake length across the chain so that growth is
+  // handled correctly — segments that haven't been "born" yet will
+  // start at the same position as the current tail
+  const snakeN = chain.length
+    ? Math.max(...chain.map((s) => getSnakeLength(s)))
+    : 0;
 
   const snakeParts: Point[][] = Array.from({ length: snakeN }, () => []);
 
   for (const snake of chain) {
     const cells = snakeToCells(snake);
-    for (let i = cells.length; i--; ) snakeParts[i].push(cells[i]);
+    for (let i = snakeN; i--; ) {
+      if (i < cells.length) {
+        snakeParts[i].push(cells[i]);
+      } else {
+        // segment not yet born — fill with the earliest available position
+        // (the tail of the current snake) so it stays still until it exists
+        snakeParts[i].push(cells[cells.length - 1]);
+      }
+    }
   }
 
   const svgElements = snakeParts.map((_, i, { length }) => {

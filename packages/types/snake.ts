@@ -1,4 +1,6 @@
 import type { Point } from "./point";
+import type { Grid } from "./grid";
+import { copyGrid, getColor, isEmpty, isInside, setColorEmpty } from "./grid";
 
 export type Snake = Uint8Array & { _tag: "__Snake__" };
 
@@ -51,4 +53,68 @@ export const createSnakeFromCells = (points: Point[]) => {
     snake[i * 2 + 1] = points[i].y + 2;
   }
   return snake as Snake;
+};
+
+/**
+ * Post-process the chain so the snake grows each time it eats a colored cell.
+ *
+ * The solver produces a chain of fixed-length snake states. This function
+ * reconstructs each state from the head path so that the snake body tracks
+ * the head's history. Each eating event increases the snake's length by one
+ * segment, keeping the old tail that would otherwise have been dropped.
+ */
+export const applyGrowthToChain = (grid: Grid, chain: Snake[]): Snake[] => {
+  if (chain.length === 0) return [];
+
+  const gridCopy = copyGrid(grid);
+  const baseLen = getSnakeLength(chain[0]);
+
+  // initial snake cells (pre-history positions for segments whose history
+  // predates the chain)
+  const initialCells = snakeToCells(chain[0]);
+
+  // Collect head positions and count eating events
+  const headPositions: Point[] = [];
+  const eatCountAtStep: number[] = [];
+  let eatenSoFar = 0;
+
+  for (let i = 0; i < chain.length; i++) {
+    const snake = chain[i];
+    const x = getHeadX(snake);
+    const y = getHeadY(snake);
+    headPositions.push({ x, y });
+
+    if (isInside(gridCopy, x, y) && !isEmpty(getColor(gridCopy, x, y))) {
+      setColorEmpty(gridCopy, x, y);
+      eatenSoFar++;
+    }
+    eatCountAtStep.push(eatenSoFar);
+  }
+
+  // Reconstruct chain with growing snakes.
+  // Segment i at time t = headPosition[t - i] when t >= i,
+  // otherwise falls back to the initial snake cell at index (i - t).
+  const result: Snake[] = [];
+  for (let t = 0; t < chain.length; t++) {
+    const totalLen = baseLen + eatCountAtStep[t];
+    const cells: Point[] = [];
+
+    for (let seg = 0; seg < totalLen; seg++) {
+      const historyStep = t - seg;
+      if (historyStep >= 0) {
+        cells.push(headPositions[historyStep]);
+      } else {
+        const initialIdx = seg - t;
+        cells.push(
+          initialIdx < initialCells.length
+            ? initialCells[initialIdx]
+            : initialCells[initialCells.length - 1],
+        );
+      }
+    }
+
+    result.push(createSnakeFromCells(cells));
+  }
+
+  return result;
 };

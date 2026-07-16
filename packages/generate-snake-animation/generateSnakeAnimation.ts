@@ -6,6 +6,7 @@ import { getBestRoute } from "@snk/solver/getBestRoute";
 import { getPathToPose } from "@snk/solver/getPathToPose";
 import type { DrawOptions } from "@snk/svg-creator";
 import { snake4 } from "@snk/types/__fixtures__/snake";
+import { applyGrowthToChain, createSnakeFromCells, getSnakeLength } from "@snk/types/snake";
 import { cellsToGrid } from "./cellsToGrid";
 
 export { basePalettes, palettes } from "./palettes";
@@ -54,8 +55,21 @@ export const generateSnakeAnimation = async (
   const snake = snake4;
 
   console.log("📡 computing best route");
-  const chain = getBestRoute(grid, snake)!;
-  chain.push(...getPathToPose(chain.slice(-1)[0], snake)!);
+  const chain = applyGrowthToChain(
+    grid,
+    getBestRoute(grid, snake)!,
+  );
+
+  // create a target snake with the same length as the grown snake for
+  // the final exit pose
+  const lastSnake = chain.slice(-1)[0];
+  const targetSnake = createSnakeFromCells(
+    Array.from({ length: getSnakeLength(lastSnake) }, (_, i) => ({
+      x: i,
+      y: -1,
+    })),
+  );
+  chain.push(...getPathToPose(lastSnake, targetSnake)!);
 
   return Promise.all(
     outputs.map(async (out, i) => {
